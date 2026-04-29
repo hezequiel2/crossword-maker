@@ -29,7 +29,8 @@ function render(result, title) {
   gridEl.style.setProperty('--cols', cols);
   gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
 
-  for (let r = 0; r < result.grid.length; r++) {
+  const rows = result.grid.length;
+  for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cellData = result.grid[r][c];
       const cell = document.createElement('div');
@@ -37,6 +38,11 @@ function render(result, title) {
         cell.className = 'cell blank';
       } else {
         cell.className = 'cell';
+        // Mark cells whose right/bottom neighbor is missing or blank so they
+        // draw the puzzle's outer silhouette. Internal edges are drawn by
+        // exactly one neighbor (top+left always), so no doubling.
+        if (c === cols - 1 || !result.grid[r][c + 1]) cell.classList.add('edge-right');
+        if (r === rows - 1 || !result.grid[r + 1][c]) cell.classList.add('edge-bottom');
         if (cellData.number) {
           const num = document.createElement('span');
           num.className = 'cell-number';

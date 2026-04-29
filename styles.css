@@ -101,15 +101,21 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: .9rem; }
 .cell {
   aspect-ratio: 1 / 1;
   container-type: inline-size;
-  border: 1px solid var(--rule);
-  /* Overlap adjacent borders so internal edges don't render at 2px. */
-  margin: 0 -1px -1px 0;
+  /* Each internal edge is drawn by exactly one cell (its left/top neighbor),
+     and silhouette edges are drawn by the .edge-right / .edge-bottom cells
+     that JS marks. Prevents the doubled-border effect that --max-cell-borders
+     produced when adjacent cells each painted their own shared edge. */
+  border: none;
+  border-top: 1px solid var(--rule);
+  border-left: 1px solid var(--rule);
   position: relative;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+.cell.edge-right { border-right: 1px solid var(--rule); }
+.cell.edge-bottom { border-bottom: 1px solid var(--rule); }
 .cell.blank { background: transparent; border: none; }
 
 .cell-number {
@@ -205,6 +211,12 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
     break-inside: avoid;
   }
 
-  .cell { border: 1px solid black; }
+  .cell {
+    border: none;
+    border-top: 1px solid black;
+    border-left: 1px solid black;
+  }
+  .cell.edge-right { border-right: 1px solid black; }
+  .cell.edge-bottom { border-bottom: 1px solid black; }
   .cell, .grid { color: black; }
 }
