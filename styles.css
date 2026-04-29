@@ -166,11 +166,25 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
   }
 
   .grid {
+    /* Concrete per-cell length for print. Firefox's print engine doesn't
+       reliably resolve aspect-ratio + 1fr tracks + container-query units
+       during pagination, so we sidestep all three with an explicit size. */
+    --print-cell: min(var(--max-cell), calc(var(--print-page-width) / var(--cols)));
     page-break-inside: avoid;
     break-inside: avoid;
-    /* On paper, cap to the printable page width so the grid never overflows. */
-    width: min(calc(var(--cols) * var(--max-cell)), var(--print-page-width));
+    width: calc(var(--cols) * var(--print-cell));
+    grid-template-columns: repeat(var(--cols), var(--print-cell)) !important;
   }
+
+  .cell {
+    width: var(--print-cell);
+    height: var(--print-cell);
+    aspect-ratio: auto;
+    container-type: normal;
+  }
+
+  .cell-number { font-size: calc(var(--print-cell) * 0.24); }
+  .cell-letter { font-size: calc(var(--print-cell) * 0.55); }
 
   /* Keep the entire clue list together. If it doesn't fit on page 1
      alongside the grid, the browser will push the whole block to page 2
