@@ -100,6 +100,13 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: .9rem; }
   grid-template-columns: repeat(var(--cols), 1fr);
   grid-template-rows: repeat(var(--rows), auto);
   margin: 0 auto 1.25rem auto;
+  /* content-box keeps the width calc above sizing the cell tracks, not the
+     padded outer box — the global border-box rule would otherwise shrink
+     the cells to fit padding+border inside the same total width. */
+  box-sizing: content-box;
+  background: #e8e8e8;
+  border: 3px solid black;
+  padding: 10px;
 }
 
 .cell {
@@ -194,12 +201,17 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
     /* Concrete per-cell length for print. Firefox's print engine doesn't
        reliably resolve aspect-ratio + 1fr tracks + container-query units
        during pagination, so we sidestep all three with an explicit size. */
-    --print-cell: min(var(--max-cell), calc(var(--print-page-width) / var(--cols)));
+    /* Reserve space for the frame (3px border + 10px padding on each side
+       = 26px ≈ 0.28in) so the framed grid still fits the printable area. */
+    --print-cell: min(var(--max-cell), calc((var(--print-page-width) - 0.3in) / var(--cols)));
     page-break-inside: avoid;
     break-inside: avoid;
     width: calc(var(--cols) * var(--print-cell));
     grid-template-columns: repeat(var(--cols), var(--print-cell)) !important;
     grid-template-rows: repeat(var(--rows), var(--print-cell)) !important;
+    /* Force browsers to print the gray fill instead of stripping it. */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .cell.real {
