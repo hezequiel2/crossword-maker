@@ -1,0 +1,185 @@
+:root {
+  --max-cell: 0.6in;
+  --print-page-width: 7.5in; /* letter (8.5in) - 2 * 0.5in margins */
+  --ink: #111;
+  --rule: #333;
+  --muted: #666;
+  --bg: #fafaf7;
+  --accent: #2c5d8f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+body { padding: 1.5rem; max-width: 60rem; margin: 0 auto; }
+
+header h1 { margin: 0 0 .25rem 0; font-size: 1.8rem; color: var(--accent); }
+.tagline { margin: 0 0 1.5rem 0; color: var(--muted); }
+
+.form {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.field { display: block; margin-bottom: 1rem; }
+.field > span {
+  display: block;
+  font-weight: bold;
+  margin-bottom: .35rem;
+  font-size: .95rem;
+}
+.field code { font-family: ui-monospace, Menlo, monospace; font-size: .85rem; }
+.field.inline { display: flex; align-items: center; gap: .75rem; }
+.field.inline > span { margin: 0; }
+
+input[type=text], textarea, select {
+  font: inherit;
+  padding: .5rem .6rem;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  width: 100%;
+  background: white;
+}
+textarea { font-family: ui-monospace, Menlo, monospace; font-size: .9rem; }
+.field.inline select { width: auto; }
+
+.actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+.actions button {
+  font: inherit;
+  padding: .55rem 1rem;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.actions button:disabled { opacity: .45; cursor: not-allowed; }
+.actions button:not(:first-child) { background: white; color: var(--accent); }
+
+.warning {
+  margin-top: 1rem;
+  padding: .65rem .8rem;
+  border-left: 4px solid #c97a00;
+  background: #fff6e5;
+  color: #5a3a00;
+  border-radius: 3px;
+}
+
+/* ---------- Puzzle render ---------- */
+
+.puzzle {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1.25rem;
+}
+
+.puzzle-title {
+  margin: 0 0 1rem 0;
+  text-align: center;
+  font-size: 1.5rem;
+}
+
+.grid {
+  display: grid;
+  /* Width = min of "ideal cell × cols" or full available width.
+     Cells are 1fr so they share that width equally; aspect-ratio makes them square. */
+  width: min(calc(var(--cols) * var(--max-cell)), 100%);
+  margin: 0 auto 1.25rem auto;
+}
+
+.cell {
+  aspect-ratio: 1 / 1;
+  container-type: inline-size;
+  border: 1px solid var(--rule);
+  position: relative;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cell.blank { background: transparent; border: none; }
+
+.cell-number {
+  position: absolute;
+  top: 4%;
+  left: 6%;
+  font-size: 24cqi;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  line-height: 1;
+}
+
+.cell-letter {
+  font-size: 55cqi;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* On-screen view shows letters; print modes override below. */
+
+.clues {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.clue-col h3 {
+  margin: 0 0 .5rem 0;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: .25rem;
+}
+.clue-col ol {
+  margin: 0;
+  padding-left: 1.75rem;
+  line-height: 1.5;
+}
+
+/* ---------- Print modes ---------- */
+
+/* In puzzle mode, hide letters; in answer mode, show them. */
+body.mode-puzzle .cell-letter { visibility: hidden; }
+
+@media print {
+  @page { size: letter; margin: 0.5in; }
+  body {
+    background: white;
+    padding: 0;
+    max-width: none;
+  }
+  .screen-only { display: none !important; }
+
+  .puzzle {
+    border: none;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .grid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    /* On paper, cap to the printable page width so the grid never overflows. */
+    width: min(calc(var(--cols) * var(--max-cell)), var(--print-page-width));
+  }
+
+  /* Keep the entire clue list together. If it doesn't fit on page 1
+     alongside the grid, the browser will push the whole block to page 2
+     instead of splitting it. */
+  .clues {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .cell { border: 1.2px solid black; }
+  .cell, .grid { color: black; }
+}
