@@ -92,31 +92,39 @@ textarea { font-family: ui-monospace, Menlo, monospace; font-size: .9rem; }
 
 .grid {
   display: grid;
-  /* Width = min of "ideal cell × cols" or full available width.
-     Cells are 1fr so they share that width equally; aspect-ratio makes them square. */
+  /* Every line is drawn by exactly one cell. Internal lines + top/left
+     silhouette: has-top/has-left on the cell below/right of the line.
+     Right/bottom silhouette: has-right/has-bottom on the edge real cell
+     itself. No phantom tracks — they didn't render reliably in print. */
   width: min(calc(var(--cols) * var(--max-cell)), 100%);
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), auto);
   margin: 0 auto 1.25rem auto;
 }
 
 .cell {
-  aspect-ratio: 1 / 1;
-  container-type: inline-size;
-  /* Each internal edge is drawn by exactly one cell (its left/top neighbor),
-     and silhouette edges are drawn by the .edge-right / .edge-bottom cells
-     that JS marks. Prevents the doubled-border effect that --max-cell-borders
-     produced when adjacent cells each painted their own shared edge. */
+  /* Default cell: no border, transparent. Becomes a paintable cell only
+     when classes are added: .real (white background + letter), .has-left
+     (left border), .has-top (top border). Every grid line is drawn by
+     exactly one cell — the one to the right or below the line — so there
+     is no doubling and no alignment ambiguity between internal lines and
+     silhouette edges. */
   border: none;
-  border-top: 1px solid var(--rule);
-  border-left: 1px solid var(--rule);
   position: relative;
-  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
 }
-.cell.edge-right { border-right: 1px solid var(--rule); }
-.cell.edge-bottom { border-bottom: 1px solid var(--rule); }
-.cell.blank { background: transparent; border: none; }
+.cell.real {
+  aspect-ratio: 1 / 1;
+  container-type: inline-size;
+  background: white;
+}
+.cell.has-left { border-left: 1px solid var(--rule); }
+.cell.has-top { border-top: 1px solid var(--rule); }
+.cell.has-right { border-right: 1px solid var(--rule); }
+.cell.has-bottom { border-bottom: 1px solid var(--rule); }
 
 .cell-number {
   position: absolute;
@@ -191,9 +199,10 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
     break-inside: avoid;
     width: calc(var(--cols) * var(--print-cell));
     grid-template-columns: repeat(var(--cols), var(--print-cell)) !important;
+    grid-template-rows: repeat(var(--rows), var(--print-cell)) !important;
   }
 
-  .cell {
+  .cell.real {
     width: var(--print-cell);
     height: var(--print-cell);
     aspect-ratio: auto;
@@ -211,12 +220,16 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
     break-inside: avoid;
   }
 
+  /* Every line painted by exactly one cell. Right/bottom silhouettes use
+     border-right/border-bottom on the edge real cell instead of a 1px
+     phantom track — print engines drop sub-pixel-rounded 1px tracks. */
   .cell {
     border: none;
-    border-top: 1px solid black;
-    border-left: 1px solid black;
+    box-shadow: none !important;
   }
-  .cell.edge-right { border-right: 1px solid black; }
-  .cell.edge-bottom { border-bottom: 1px solid black; }
+  .cell.has-left { border-left: 1px solid black; }
+  .cell.has-top { border-top: 1px solid black; }
+  .cell.has-right { border-right: 1px solid black; }
+  .cell.has-bottom { border-bottom: 1px solid black; }
   .cell, .grid { color: black; }
 }

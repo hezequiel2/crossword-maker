@@ -25,24 +25,32 @@ function render(result, title) {
 
   const gridEl = document.createElement('div');
   gridEl.className = 'grid';
+  const rows = result.grid.length;
   const cols = result.grid[0].length;
   gridEl.style.setProperty('--cols', cols);
-  gridEl.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  gridEl.style.setProperty('--rows', rows);
 
-  const rows = result.grid.length;
+  // Every grid line is drawn by exactly one cell, so no two cells paint the
+  // same pixel — that's what keeps lines from doubling and from drifting
+  // off-axis. Internal lines + left/top silhouette: `has-left`/`has-top` on
+  // the cell to the right/below the line. Right/bottom silhouette at the
+  // outer edge of the grid (where there is no cell to the right/below):
+  // `has-right`/`has-bottom` on the edge real cell itself. We avoid the
+  // earlier phantom-row/column trick because 1px-wide grid tracks aren't
+  // reliably rendered by print engines, which dropped those silhouettes.
+  const isReal = (r, c) =>
+    r >= 0 && r < rows && c >= 0 && c < cols && !!result.grid[r][c];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const cellData = result.grid[r][c];
       const cell = document.createElement('div');
-      if (!cellData) {
-        cell.className = 'cell blank';
-      } else {
-        cell.className = 'cell';
-        // Mark cells whose right/bottom neighbor is missing or blank so they
-        // draw the puzzle's outer silhouette. Internal edges are drawn by
-        // exactly one neighbor (top+left always), so no doubling.
-        if (c === cols - 1 || !result.grid[r][c + 1]) cell.classList.add('edge-right');
-        if (r === rows - 1 || !result.grid[r + 1][c]) cell.classList.add('edge-bottom');
+      cell.className = 'cell';
+      if (cellData) cell.classList.add('real');
+      if (isReal(r, c - 1) || isReal(r, c)) cell.classList.add('has-left');
+      if (isReal(r - 1, c) || isReal(r, c)) cell.classList.add('has-top');
+      if (cellData && c === cols - 1) cell.classList.add('has-right');
+      if (cellData && r === rows - 1) cell.classList.add('has-bottom');
+      if (cellData) {
         if (cellData.number) {
           const num = document.createElement('span');
           num.className = 'cell-number';
