@@ -51,6 +51,16 @@ input[type=text], textarea, select {
   background: white;
 }
 textarea { font-family: ui-monospace, Menlo, monospace; font-size: .9rem; }
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path fill='%23555' d='M0 0h12L6 8z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 10px 7px;
+  padding-right: 1.9rem;
+}
 .field.inline select { width: auto; }
 
 .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
@@ -224,14 +234,6 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
   .cell-number { font-size: calc(var(--print-cell) * 0.24); }
   .cell-letter { font-size: calc(var(--print-cell) * 0.55); }
 
-  /* Keep the entire clue list together. If it doesn't fit on page 1
-     alongside the grid, the browser will push the whole block to page 2
-     instead of splitting it. */
-  .clues {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
   /* Every line painted by exactly one cell. Right/bottom silhouettes use
      border-right/border-bottom on the edge real cell instead of a 1px
      phantom track — print engines drop sub-pixel-rounded 1px tracks. */
@@ -244,4 +246,42 @@ body.mode-puzzle .cell-letter { visibility: hidden; }
   .cell.has-right { border-right: 1px solid black; }
   .cell.has-bottom { border-bottom: 1px solid black; }
   .cell, .grid { color: black; }
+
+  /* Answer-key (clue list) placement — chosen by the user at print time
+     via body[data-answer-placement]. "below" is the natural flow and needs
+     no rules. */
+
+  body[data-answer-placement="separate"] .clues {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Reserve a fixed, readable column for the clues; shrink the grid's
+     page-width budget so the existing --print-cell formula on .grid uses
+     the remaining space. Whatever the grid doesn't consume stays with the
+     puzzle as breathing room rather than padding the right margin. */
+  body[data-answer-placement="side"] {
+    --print-page-width: 4.7in; /* 7.5in page - 2.5in clues - 0.3in gap */
+  }
+  body[data-answer-placement="side"] .puzzle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.3in;
+  }
+  body[data-answer-placement="side"] .puzzle-title {
+    flex: 0 0 100%;
+    margin-bottom: 0;
+  }
+  body[data-answer-placement="side"] .grid {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  body[data-answer-placement="side"] .clues {
+    flex: 0 0 2.5in;
+    display: block;
+  }
+  body[data-answer-placement="side"] .clue-col + .clue-col {
+    margin-top: 1rem;
+  }
 }

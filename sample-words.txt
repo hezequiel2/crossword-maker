@@ -1,0 +1,20 @@
+SUN, It rises in the east each morning
+RAIN, Water that falls from clouds
+CLOUD, A fluffy white shape in the sky
+WIND, Moving air you can feel but not see
+SNOW, Cold white flakes that fall in winter
+TREE, A tall plant with a trunk and leaves
+LEAF, The flat green part of a plant
+FLOWER, The colorful part of a plant that blooms
+GRASS, Green plants that cover a lawn
+RIVER, A long stream of flowing water
+MOUNTAIN, A very tall landform with a peak
+OCEAN, A huge body of salty water
+BEACH, Sandy shore next to the sea
+DESERT, A dry place with lots of sand
+FOREST, A large area filled with trees
+ANIMAL, A living creature that is not a plant
+BIRD, A feathered creature that often flies
+FISH, A creature that lives and swims in water
+INSECT, A small bug with six legs
+ROCK, A hard piece of stone you find on the ground

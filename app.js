@@ -6,6 +6,7 @@ const generateBtn = document.getElementById('generate');
 const regenerateBtn = document.getElementById('regenerate');
 const printPuzzleBtn = document.getElementById('print-puzzle');
 const printAnswersBtn = document.getElementById('print-answers');
+const answerPlacementEl = document.getElementById('answer-placement');
 const warningEl = document.getElementById('warning');
 const outputEl = document.getElementById('output');
 
@@ -134,6 +135,7 @@ function printAs(mode) {
   if (!lastResult) return;
   document.body.classList.remove('mode-puzzle', 'mode-answers');
   document.body.classList.add(mode);
+  document.body.dataset.answerPlacement = answerPlacementEl.value;
   // Let the browser apply styles before opening the print dialog.
   setTimeout(() => window.print(), 50);
 }
@@ -143,4 +145,5 @@ printAnswersBtn.addEventListener('click', () => printAs('mode-answers'));
 
 window.addEventListener('afterprint', () => {
   document.body.classList.remove('mode-puzzle', 'mode-answers');
+  delete document.body.dataset.answerPlacement;
 });
