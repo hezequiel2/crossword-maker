@@ -249,7 +249,7 @@ select {
 
 .warning {
   margin-top: 1rem;
-  padding: .75rem .9rem .75rem 2rem;
+  padding: .75rem .9rem .75rem 2.35rem;
   border-left: 4px solid #c97a00;
   background: #fff6e1;
   color: #5a3a00;
