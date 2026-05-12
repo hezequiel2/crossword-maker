@@ -400,10 +400,13 @@ myPuzzlesBtn.addEventListener('click', async () => {
 
 function renderPuzzlesList(puzzles) {
   puzzlesListEl.innerHTML = '';
+  const countEl = document.getElementById('puzzles-count');
   if (!puzzles || puzzles.length === 0) {
+    if (countEl) countEl.textContent = '';
     puzzlesListEl.innerHTML = '<p class="muted">No saved puzzles yet. Generate one and click Save.</p>';
     return;
   }
+  if (countEl) countEl.textContent = `${puzzles.length} saved`;
   for (const p of puzzles) {
     const row = document.createElement('div');
     row.className = 'puzzle-row';
@@ -417,7 +420,14 @@ function renderPuzzlesList(puzzles) {
     metaEl.className = 'puzzle-row-meta';
     const when = new Date(p.updated_at).toLocaleString();
     const entriesArr = parseStoredEntries(p.entries);
-    metaEl.textContent = `${entriesArr.length} entries · updated ${when}`;
+    const badge = document.createElement('span');
+    badge.className = 'entries-badge';
+    badge.textContent = `${entriesArr.length} entries`;
+    const dateEl = document.createElement('span');
+    dateEl.className = 'puzzle-row-date';
+    dateEl.textContent = `updated ${when}`;
+    metaEl.appendChild(badge);
+    metaEl.appendChild(dateEl);
     info.appendChild(nameEl);
     info.appendChild(metaEl);
 
@@ -426,6 +436,7 @@ function renderPuzzlesList(puzzles) {
 
     const openBtn = document.createElement('button');
     openBtn.type = 'button';
+    openBtn.className = 'primary';
     openBtn.textContent = 'Open';
     openBtn.addEventListener('click', () => openPuzzle(p));
 

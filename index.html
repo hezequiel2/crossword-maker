@@ -75,7 +75,7 @@
         <button id="print-answers" type="button" disabled>Print answer key</button>
         <span class="actions-divider" aria-hidden="true"></span>
         <button id="save-puzzle" type="button" disabled title="Sign in to save">Save</button>
-        <button id="my-puzzles" type="button" disabled title="Sign in to view your puzzles">My puzzles</button>
+        <button id="my-puzzles" type="button" class="outline-primary" disabled title="Sign in to view your puzzles">My puzzles</button>
       </div>
 
       <div id="warning" class="warning" hidden></div>
@@ -85,7 +85,7 @@
     <section id="output" class="output" aria-live="polite"></section>
   </main>
 
-  <footer class="screen-only app-version">v1.4.3</footer>
+  <footer class="screen-only app-version">v1.5.0</footer>
 
   <!-- Auth modal -->
   <dialog id="auth-modal" class="modal">
@@ -99,7 +99,7 @@
       </div>
       <label class="field">
         <span>Email</span>
-        <input id="auth-email" type="email" autocomplete="email" required />
+        <input id="auth-email" type="email" autocomplete="email" placeholder="you@school.edu" required />
       </label>
       <label class="field">
         <span>Password</span>
@@ -107,7 +107,7 @@
       </label>
       <div id="auth-error" class="warning" hidden></div>
       <div class="actions">
-        <button id="auth-submit" type="submit">Sign in</button>
+        <button id="auth-submit" type="submit" class="primary">Sign in</button>
         <button type="button" id="auth-forgot" class="linkish">Forgot password?</button>
       </div>
     </form>
@@ -117,7 +117,10 @@
   <dialog id="puzzles-modal" class="modal">
     <div class="modal-body">
       <div class="modal-header">
-        <h2>My puzzles</h2>
+        <div class="modal-title-group">
+          <h2>My puzzles</h2>
+          <p id="puzzles-count" class="modal-subtitle muted"></p>
+        </div>
         <button type="button" class="modal-close" data-close-puzzles aria-label="Close">×</button>
       </div>
       <div id="puzzles-list" class="puzzles-list">
