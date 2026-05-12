@@ -1,4 +1,5 @@
 import { parseInput, generate } from './crossword.js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const titleEl = document.getElementById('title');
 const entriesEl = document.getElementById('entries');
@@ -9,8 +10,38 @@ const printAnswersBtn = document.getElementById('print-answers');
 const answerPlacementEl = document.getElementById('answer-placement');
 const warningEl = document.getElementById('warning');
 const outputEl = document.getElementById('output');
+const toastEl = document.getElementById('toast');
+
+const saveBtn = document.getElementById('save-puzzle');
+const myPuzzlesBtn = document.getElementById('my-puzzles');
+const signInBtn = document.getElementById('signin-btn');
+const signOutBtn = document.getElementById('signout-btn');
+const authStatusEl = document.getElementById('auth-status');
+
+const authModal = document.getElementById('auth-modal');
+const authForm = document.getElementById('auth-form');
+const authEmailEl = document.getElementById('auth-email');
+const authPasswordEl = document.getElementById('auth-password');
+const authErrorEl = document.getElementById('auth-error');
+const authSubmitBtn = document.getElementById('auth-submit');
+const authForgotBtn = document.getElementById('auth-forgot');
+const tabSignIn = document.getElementById('tab-signin');
+const tabSignUp = document.getElementById('tab-signup');
+
+const puzzlesModal = document.getElementById('puzzles-modal');
+const puzzlesListEl = document.getElementById('puzzles-list');
+
+const editingPillEl = document.getElementById('editing-pill');
+const editingPillNameEl = editingPillEl.querySelector('.editing-pill__name');
+const editingPillClearBtn = editingPillEl.querySelector('.editing-pill__clear');
+
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY);
 
 let lastResult = null;
+let currentUser = null;
+let currentPuzzleId = null;
+let currentPuzzleName = '';
+let authMode = 'signin';
 
 function render(result, title) {
   outputEl.innerHTML = '';
@@ -104,7 +135,14 @@ function showWarning(message) {
   warningEl.textContent = message;
 }
 
-function runGenerate() {
+function showToast(message) {
+  toastEl.textContent = message;
+  toastEl.hidden = false;
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => { toastEl.hidden = true; }, 2500);
+}
+
+function runGenerate({ seed } = {}) {
   const entries = parseInput(entriesEl.value);
   if (entries.length === 0) {
     showWarning('Add at least one line in the format: answer, clue text');
@@ -112,9 +150,12 @@ function runGenerate() {
     printPuzzleBtn.disabled = true;
     printAnswersBtn.disabled = true;
     regenerateBtn.disabled = true;
+    updateSaveButton();
+    updateEditingPill();
     return;
   }
-  const result = generate(entries, { seed: Math.floor(Math.random() * 1e9) });
+  const useSeed = seed ?? Math.floor(Math.random() * 1e9);
+  const result = generate(entries, { seed: useSeed });
   lastResult = result;
   render(result, titleEl.value.trim());
   if (result.unplaced.length > 0) {
@@ -126,10 +167,45 @@ function runGenerate() {
   printPuzzleBtn.disabled = false;
   printAnswersBtn.disabled = false;
   regenerateBtn.disabled = false;
+  updateSaveButton();
+  updateEditingPill();
 }
 
-generateBtn.addEventListener('click', runGenerate);
-regenerateBtn.addEventListener('click', runGenerate);
+function startNew() {
+  titleEl.value = '';
+  entriesEl.value = '';
+  lastResult = null;
+  currentPuzzleId = null;
+  currentPuzzleName = '';
+  outputEl.innerHTML = '';
+  regenerateBtn.disabled = true;
+  printPuzzleBtn.disabled = true;
+  printAnswersBtn.disabled = true;
+  showWarning(null);
+  toastEl.hidden = true;
+  updateSaveButton();
+  updateEditingPill();
+  titleEl.focus();
+}
+
+function updateEditingPill() {
+  if (currentPuzzleId && currentPuzzleName) {
+    editingPillNameEl.textContent = currentPuzzleName;
+    editingPillEl.hidden = false;
+  } else {
+    editingPillEl.hidden = true;
+  }
+}
+
+editingPillClearBtn.addEventListener('click', startNew);
+
+generateBtn.addEventListener('click', () => {
+  // New layout means we're no longer editing the previously-loaded puzzle.
+  currentPuzzleId = null;
+  currentPuzzleName = '';
+  runGenerate();
+});
+regenerateBtn.addEventListener('click', () => runGenerate());
 
 function printAs(mode) {
   if (!lastResult) return;
@@ -147,3 +223,284 @@ window.addEventListener('afterprint', () => {
   document.body.classList.remove('mode-puzzle', 'mode-answers');
   delete document.body.dataset.answerPlacement;
 });
+
+// ---------- Auth ----------
+
+function setAuthMode(mode) {
+  authMode = mode;
+  tabSignIn.classList.toggle('active', mode === 'signin');
+  tabSignUp.classList.toggle('active', mode === 'signup');
+  authSubmitBtn.textContent = mode === 'signin' ? 'Sign in' : 'Create account';
+  authPasswordEl.autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
+  authErrorEl.hidden = true;
+}
+
+function showAuthError(msg) {
+  authErrorEl.textContent = msg;
+  authErrorEl.hidden = false;
+}
+
+tabSignIn.addEventListener('click', () => setAuthMode('signin'));
+tabSignUp.addEventListener('click', () => setAuthMode('signup'));
+
+signInBtn.addEventListener('click', () => {
+  setAuthMode('signin');
+  authErrorEl.hidden = true;
+  authModal.showModal();
+});
+
+document.querySelector('[data-close-auth]').addEventListener('click', () => authModal.close());
+document.querySelector('[data-close-puzzles]').addEventListener('click', () => puzzlesModal.close());
+
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  authSubmitBtn.disabled = true;
+  const email = authEmailEl.value.trim();
+  const password = authPasswordEl.value;
+  try {
+    if (authMode === 'signin') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+    }
+    authModal.close();
+    authForm.reset();
+  } catch (err) {
+    showAuthError(err?.message ?? 'Something went wrong. Try again.');
+  } finally {
+    authSubmitBtn.disabled = false;
+  }
+});
+
+authForgotBtn.addEventListener('click', async () => {
+  const email = authEmailEl.value.trim();
+  if (!email) {
+    showAuthError('Enter your email above first, then click "Forgot password?".');
+    return;
+  }
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) throw error;
+    showAuthError(`Password reset email sent to ${email}. Check your inbox.`);
+  } catch (err) {
+    showAuthError(err?.message ?? 'Could not send reset email.');
+  }
+});
+
+signOutBtn.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+});
+
+function updateAuthUI() {
+  if (currentUser) {
+    authStatusEl.textContent = `Signed in as ${currentUser.email}`;
+    signInBtn.hidden = true;
+    signOutBtn.hidden = false;
+    myPuzzlesBtn.disabled = false;
+    myPuzzlesBtn.title = 'View your saved puzzles';
+    document.body.classList.add('is-signed-in');
+  } else {
+    authStatusEl.textContent = 'Not signed in';
+    signInBtn.hidden = false;
+    signOutBtn.hidden = true;
+    myPuzzlesBtn.disabled = true;
+    myPuzzlesBtn.title = 'Sign in to view your puzzles';
+    document.body.classList.remove('is-signed-in');
+    // Signing out should drop any editing-pill state too.
+    currentPuzzleId = null;
+    currentPuzzleName = '';
+    updateEditingPill();
+  }
+  updateSaveButton();
+}
+
+function updateSaveButton() {
+  const hasPuzzle = !!(lastResult && lastResult.grid.length > 0);
+  saveBtn.disabled = !currentUser || !hasPuzzle;
+  saveBtn.title = !currentUser
+    ? 'Sign in to save'
+    : !hasPuzzle ? 'Generate a puzzle first' : (currentPuzzleId ? 'Update saved puzzle' : 'Save puzzle');
+  saveBtn.textContent = currentPuzzleId ? 'Update' : 'Save';
+}
+
+supabase.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user ?? null;
+  updateAuthUI();
+});
+
+// Initial session check (in case user is already signed in from previous visit).
+supabase.auth.getSession().then(({ data }) => {
+  currentUser = data.session?.user ?? null;
+  updateAuthUI();
+});
+
+// ---------- Puzzles repo ----------
+
+function buildPuzzleRow() {
+  const entries = parseInput(entriesEl.value);
+  return {
+    user_id: currentUser.id,
+    name: titleEl.value.trim() || 'Untitled',
+    title: titleEl.value.trim(),
+    // `entries` is `text` in the schema — store as JSON string.
+    entries: JSON.stringify(entries),
+    answer_placement: answerPlacementEl.value,
+    seed: lastResult.seed,
+  };
+}
+
+function parseStoredEntries(raw) {
+  if (Array.isArray(raw)) return raw;
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+saveBtn.addEventListener('click', async () => {
+  if (!currentUser || !lastResult) return;
+  saveBtn.disabled = true;
+  try {
+    const row = buildPuzzleRow();
+    if (currentPuzzleId) {
+      const { error } = await supabase
+        .from('puzzles')
+        .update(row)
+        .eq('id', currentPuzzleId);
+      if (error) throw error;
+      currentPuzzleName = row.name;
+      showToast('Puzzle updated.');
+    } else {
+      const { data, error } = await supabase
+        .from('puzzles')
+        .insert(row)
+        .select('id')
+        .single();
+      if (error) throw error;
+      currentPuzzleId = data.id;
+      currentPuzzleName = row.name;
+      showToast('Puzzle saved.');
+    }
+  } catch (err) {
+    showWarning(`Save failed: ${err?.message ?? err}`);
+  } finally {
+    updateSaveButton();
+    updateEditingPill();
+  }
+});
+
+myPuzzlesBtn.addEventListener('click', async () => {
+  puzzlesModal.showModal();
+  puzzlesListEl.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const { data, error } = await supabase
+      .from('puzzles')
+      .select('id, name, title, entries, answer_placement, seed, updated_at')
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    renderPuzzlesList(data);
+  } catch (err) {
+    puzzlesListEl.innerHTML = `<p class="warning">Couldn't load puzzles: ${err?.message ?? err}</p>`;
+  }
+});
+
+function renderPuzzlesList(puzzles) {
+  puzzlesListEl.innerHTML = '';
+  if (!puzzles || puzzles.length === 0) {
+    puzzlesListEl.innerHTML = '<p class="muted">No saved puzzles yet. Generate one and click Save.</p>';
+    return;
+  }
+  for (const p of puzzles) {
+    const row = document.createElement('div');
+    row.className = 'puzzle-row';
+
+    const info = document.createElement('div');
+    info.className = 'puzzle-row-info';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'puzzle-row-name';
+    nameEl.textContent = p.name || p.title || 'Untitled';
+    const metaEl = document.createElement('div');
+    metaEl.className = 'puzzle-row-meta';
+    const when = new Date(p.updated_at).toLocaleString();
+    const entriesArr = parseStoredEntries(p.entries);
+    metaEl.textContent = `${entriesArr.length} entries · updated ${when}`;
+    info.appendChild(nameEl);
+    info.appendChild(metaEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'puzzle-row-actions';
+
+    const openBtn = document.createElement('button');
+    openBtn.type = 'button';
+    openBtn.textContent = 'Open';
+    openBtn.addEventListener('click', () => openPuzzle(p));
+
+    const renameBtn = document.createElement('button');
+    renameBtn.type = 'button';
+    renameBtn.textContent = 'Rename';
+    renameBtn.addEventListener('click', () => renamePuzzle(p));
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'danger';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.addEventListener('click', () => deletePuzzle(p));
+
+    actions.appendChild(openBtn);
+    actions.appendChild(renameBtn);
+    actions.appendChild(deleteBtn);
+
+    row.appendChild(info);
+    row.appendChild(actions);
+    puzzlesListEl.appendChild(row);
+  }
+}
+
+function openPuzzle(p) {
+  titleEl.value = p.title || '';
+  const entries = parseStoredEntries(p.entries);
+  entriesEl.value = entries.map(e => `${e.word}, ${e.clue}`).join('\n');
+  if (p.answer_placement) answerPlacementEl.value = p.answer_placement;
+  currentPuzzleId = p.id;
+  currentPuzzleName = p.name || p.title || 'Untitled';
+  puzzlesModal.close();
+  runGenerate({ seed: p.seed });
+}
+
+async function renamePuzzle(p) {
+  const nextName = prompt('New name for this puzzle:', p.name || p.title || '');
+  if (nextName == null) return;
+  const trimmed = nextName.trim();
+  if (!trimmed) return;
+  try {
+    const { error } = await supabase
+      .from('puzzles')
+      .update({ name: trimmed })
+      .eq('id', p.id);
+    if (error) throw error;
+    p.name = trimmed;
+    if (currentPuzzleId === p.id) {
+      currentPuzzleName = trimmed;
+      updateEditingPill();
+    }
+    myPuzzlesBtn.click(); // reload
+  } catch (err) {
+    showWarning(`Rename failed: ${err?.message ?? err}`);
+  }
+}
+
+async function deletePuzzle(p) {
+  if (!confirm(`Delete "${p.name || p.title || 'Untitled'}"? This cannot be undone.`)) return;
+  try {
+    const { error } = await supabase.from('puzzles').delete().eq('id', p.id);
+    if (error) throw error;
+    if (currentPuzzleId === p.id) {
+      currentPuzzleId = null;
+      currentPuzzleName = '';
+      updateSaveButton();
+      updateEditingPill();
+    }
+    myPuzzlesBtn.click(); // reload
+  } catch (err) {
+    showWarning(`Delete failed: ${err?.message ?? err}`);
+  }
+}

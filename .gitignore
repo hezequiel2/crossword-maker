@@ -1,4 +1,6 @@
 .claude/
+.conversation/
 .DS_Store
 .playwright-mcp/
 /*.png
+SETUP.local.md

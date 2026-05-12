@@ -4,16 +4,50 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Crossword Maker for Teachers</title>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><rect width='12' height='12' fill='%23f6efe1'/><g fill='none' stroke='%231d4570' stroke-width='0.6'><rect x='1' y='1' width='10' height='10'/><line x1='1' y1='4.33' x2='11' y2='4.33'/><line x1='1' y1='7.66' x2='11' y2='7.66'/><line x1='4.33' y1='1' x2='4.33' y2='11'/><line x1='7.66' y1='1' x2='7.66' y2='11'/></g><rect x='4.33' y='4.33' width='3.33' height='3.33' fill='%231d4570'/></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=DM+Sans:wght@400..600&display=swap">
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="screen-only">
-    <h1>Crossword Maker</h1>
-    <p class="tagline">Free, printable crosswords for elementary classrooms.</p>
+    <div id="auth-strip" class="auth-strip">
+      <span id="auth-status" class="auth-status">Not signed in</span>
+      <div class="auth-actions">
+        <button id="signin-btn" type="button">Sign in</button>
+        <button id="signout-btn" type="button" hidden>Sign out</button>
+      </div>
+    </div>
+    <div class="masthead">
+      <span class="wordmark-glyph" aria-hidden="true">
+        <svg viewBox="0 0 12 12" width="28" height="28">
+          <g fill="none" stroke="currentColor" stroke-width="0.6">
+            <rect x="1" y="1" width="10" height="10"/>
+            <line x1="1" y1="4.33" x2="11" y2="4.33"/>
+            <line x1="1" y1="7.66" x2="11" y2="7.66"/>
+            <line x1="4.33" y1="1" x2="4.33" y2="11"/>
+            <line x1="7.66" y1="1" x2="7.66" y2="11"/>
+          </g>
+          <rect x="4.33" y="4.33" width="3.33" height="3.33" fill="currentColor"/>
+        </svg>
+      </span>
+      <h1>Crossword Maker</h1>
+    </div>
+    <p class="tagline">Crosswords for elementary classrooms!</p>
   </header>
 
   <main>
     <section class="form screen-only">
+      <div id="editing-pill" class="editing-pill" hidden>
+        <span class="editing-pill__dot" aria-hidden="true"></span>
+        <span class="editing-pill__label">Editing:</span>
+        <span class="editing-pill__name"></span>
+        <button type="button" class="editing-pill__clear" aria-label="Start new puzzle">
+          <span aria-hidden="true">×</span> Start new
+        </button>
+      </div>
+
       <label class="field">
         <span>Puzzle title</span>
         <input id="title" type="text" placeholder="Spring Vocabulary" />
@@ -34,20 +68,68 @@
       </label>
 
       <div class="actions">
-        <button id="generate" type="button">Generate puzzle</button>
+        <button id="generate" type="button" class="primary">Generate puzzle</button>
         <button id="regenerate" type="button" disabled>Try another layout</button>
+        <span class="actions-divider" aria-hidden="true"></span>
         <button id="print-puzzle" type="button" disabled>Print puzzle</button>
         <button id="print-answers" type="button" disabled>Print answer key</button>
+        <span class="actions-divider" aria-hidden="true"></span>
+        <button id="save-puzzle" type="button" disabled title="Sign in to save">Save</button>
+        <button id="my-puzzles" type="button" disabled title="Sign in to view your puzzles">My puzzles</button>
       </div>
 
       <div id="warning" class="warning" hidden></div>
+      <div id="toast" class="toast" hidden></div>
     </section>
 
     <section id="output" class="output" aria-live="polite"></section>
   </main>
 
-  <footer class="screen-only app-version">v1.2.1</footer>
+  <footer class="screen-only app-version">v1.4.0</footer>
 
+  <!-- Auth modal -->
+  <dialog id="auth-modal" class="modal">
+    <form method="dialog" class="modal-body" id="auth-form">
+      <div class="modal-header">
+        <div class="tabs">
+          <button type="button" id="tab-signin" class="tab active">Sign in</button>
+          <button type="button" id="tab-signup" class="tab">Create account</button>
+        </div>
+        <button type="button" class="modal-close" data-close-auth aria-label="Close">×</button>
+      </div>
+      <label class="field">
+        <span>Email</span>
+        <input id="auth-email" type="email" autocomplete="email" required />
+      </label>
+      <label class="field">
+        <span>Password</span>
+        <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required />
+      </label>
+      <div id="auth-error" class="warning" hidden></div>
+      <div class="actions">
+        <button id="auth-submit" type="submit">Sign in</button>
+        <button type="button" id="auth-forgot" class="linkish">Forgot password?</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- My Puzzles modal -->
+  <dialog id="puzzles-modal" class="modal">
+    <div class="modal-body">
+      <div class="modal-header">
+        <h2>My puzzles</h2>
+        <button type="button" class="modal-close" data-close-puzzles aria-label="Close">×</button>
+      </div>
+      <div id="puzzles-list" class="puzzles-list">
+        <p class="muted">Loading…</p>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    window.SUPABASE_URL = 'https://odeupftrdoldzdomjoeu.supabase.co';
+    window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OT_vPShIzdKF_pjsPexglA_jcXP21Xa';
+  </script>
   <script type="module" src="app.js"></script>
 </body>
 </html>

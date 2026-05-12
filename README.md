@@ -1,6 +1,8 @@
 # Crossword Maker
 
-A free, no-install web app that generates printable crossword puzzles for elementary classrooms. The print output is clean — no ads, no watermarks, no accounts.
+A free, no-install web app that generates printable crossword puzzles for elementary classrooms. The print output is clean — no ads, no watermarks.
+
+Optional cloud save (sign in with email + password) lets you keep a puzzle library that follows you across devices.
 
 **Live site: https://hezequiel2.github.io/crossword-maker/**
 
@@ -62,4 +64,6 @@ GitHub Pages rebuilds automatically within about a minute.
 - `app.js` — UI wiring and rendering
 - `crossword.js` — generation algorithm (randomized greedy placement, scored for squareness)
 
-No build step, no dependencies, no backend. Pure static HTML/CSS/JS.
+No build step, pure static HTML/CSS/JS. Cloud save uses Supabase via the JS SDK loaded from a CDN.
+
+For setup and configuration details (Supabase project, API keys, deployment notes), see `SETUP.local.md` — not in this repo; contact the project owner.

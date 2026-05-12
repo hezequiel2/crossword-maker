@@ -148,7 +148,10 @@ export function generate(entries, options = {}) {
       best = result;
     }
   }
-  return best ?? { grid: [], placements: [], acrossClues: [], downClues: [], unplaced: [] };
+  const fallback = { grid: [], placements: [], acrossClues: [], downClues: [], unplaced: [] };
+  const result = best ?? fallback;
+  result.seed = baseSeed;
+  return result;
 }
 
 function generateOnce(entries, rng) {
