@@ -199,12 +199,7 @@ function updateEditingPill() {
 
 editingPillClearBtn.addEventListener('click', startNew);
 
-generateBtn.addEventListener('click', () => {
-  // New layout means we're no longer editing the previously-loaded puzzle.
-  currentPuzzleId = null;
-  currentPuzzleName = '';
-  runGenerate();
-});
+generateBtn.addEventListener('click', () => runGenerate());
 regenerateBtn.addEventListener('click', () => runGenerate());
 
 function printAs(mode) {
