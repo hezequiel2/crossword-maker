@@ -474,30 +474,32 @@ body.is-signed-in .auth-status::before {
 /* ---------- Toast / muted ---------- */
 
 .toast {
-  margin-top: 1rem;
-  padding: .75rem .9rem .75rem 2.35rem;
-  border-left: 4px solid #2c8f4a;
-  background: #ecf6ef;
-  color: #1d4d2d;
-  border-radius: 4px;
+  margin: 0 0 1.25rem;
+  padding: .8rem 1rem .8rem 2.5rem;
+  border: 1px solid #2c8f4a;
+  background: #2c8f4a;
+  color: #ffffff;
+  border-radius: 8px;
   font-family: var(--ui-sans);
-  font-size: .92rem;
+  font-size: .95rem;
+  font-weight: 500;
   position: relative;
+  box-shadow: 0 2px 8px rgba(44, 143, 74, .18);
   animation: fadeIn .2s ease both;
 }
 .toast::before {
   content: "✓";
   position: absolute;
-  left: .85rem;
+  left: .9rem;
   top: 50%;
   transform: translateY(-50%);
-  width: 1rem;
-  height: 1rem;
+  width: 1.1rem;
+  height: 1.1rem;
   border-radius: 50%;
-  background: #2c8f4a;
-  color: white;
+  background: rgba(255, 255, 255, .25);
+  color: #ffffff;
   font-weight: 700;
-  font-size: .7rem;
+  font-size: .75rem;
   display: flex; align-items: center; justify-content: center;
 }
 .muted { color: var(--ink-soft); font-family: var(--ui-sans); }

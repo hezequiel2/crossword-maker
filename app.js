@@ -437,15 +437,16 @@ authForm.addEventListener('submit', async (e) => {
         options: { emailRedirectTo: emailRedirectTo(), captchaToken },
       });
       if (error) throw error;
-      // Identity is present but no active session means email confirmation is required.
-      const needsConfirmation = !data?.session && !!data?.user;
-      if (needsConfirmation) {
-        showCheckEmailPanel(email);
-      } else {
-        authModal.close();
-        authForm.reset();
-        resetPasswordVisibility();
-      }
+      // Always show the panel: Supabase obscures duplicate-email signups by
+      // returning data.user with empty identities (or null), so we can't
+      // reliably distinguish "new signup, confirmation needed" from
+      // "already-existing account" — and in both cases the right user
+      // instruction is the same: check your email.
+      showCheckEmailPanel(email);
+      // Discard the typed password from memory; modal stays open on the panel.
+      authPasswordEl.value = '';
+      authPasswordConfirmEl.value = '';
+      resetPasswordVisibility();
     }
   } catch (err) {
     showAuthError(err?.message ?? 'Something went wrong. Try again.');
