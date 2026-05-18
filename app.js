@@ -268,12 +268,12 @@ function setAuthMode(mode) {
   authPasswordEl.autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
   authPasswordConfirmField.hidden = mode !== 'signup';
   authPasswordConfirmEl.required = mode === 'signup';
-  authCaptchaEl.hidden = mode !== 'signup';
-  if (mode === 'signup') {
-    // Render lazily so the Turnstile script has time to load before first use.
-    if (window.turnstile) ensureTurnstile();
-    else window.turnstile?.ready?.(ensureTurnstile);
-  }
+  // Supabase's CAPTCHA protection covers every auth endpoint (signin,
+  // signup, password reset, resend), so the widget needs to be visible
+  // in every mode — not just signup.
+  authCaptchaEl.hidden = false;
+  if (window.turnstile) ensureTurnstile();
+  else window.turnstile?.ready?.(ensureTurnstile);
   resetPasswordVisibility();
   authErrorEl.hidden = true;
   authErrorEl.textContent = '';
@@ -293,15 +293,18 @@ function showAuthError(msg, { withResend = false, email = '' } = {}) {
     btn.addEventListener('click', async () => {
       btn.disabled = true;
       try {
+        const captchaToken = getTurnstileToken();
         const { error } = await supabase.auth.resend({
           type: 'signup',
           email,
-          options: { emailRedirectTo: emailRedirectTo() },
+          options: { emailRedirectTo: emailRedirectTo(), captchaToken },
         });
         if (error) throw error;
         authErrorEl.textContent = `Confirmation email re-sent to ${email}. Check your inbox.`;
       } catch (err) {
         authErrorEl.textContent = err?.message ?? 'Could not resend confirmation email.';
+      } finally {
+        resetTurnstile();
       }
     });
     authErrorEl.appendChild(btn);
@@ -338,8 +341,13 @@ authForm.addEventListener('submit', async (e) => {
   const email = authEmailEl.value.trim();
   const password = authPasswordEl.value;
   try {
+    const captchaToken = getTurnstileToken();
     if (authMode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken },
+      });
       if (error) {
         const msg = (error.message || '').toLowerCase();
         const code = error.code || '';
@@ -361,7 +369,6 @@ authForm.addEventListener('submit', async (e) => {
         showAuthError('Passwords do not match.');
         return;
       }
-      const captchaToken = getTurnstileToken();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -381,7 +388,7 @@ authForm.addEventListener('submit', async (e) => {
     showAuthError(err?.message ?? 'Something went wrong. Try again.');
   } finally {
     authSubmitBtn.disabled = false;
-    if (authMode === 'signup') resetTurnstile();
+    resetTurnstile();
   }
 });
 
@@ -392,11 +399,14 @@ authForgotBtn.addEventListener('click', async () => {
     return;
   }
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const captchaToken = getTurnstileToken();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { captchaToken });
     if (error) throw error;
     showAuthError(`Password reset email sent to ${email}. Check your inbox.`);
   } catch (err) {
     showAuthError(err?.message ?? 'Could not send reset email.');
+  } finally {
+    resetTurnstile();
   }
 });
 
