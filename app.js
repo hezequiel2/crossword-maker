@@ -22,11 +22,15 @@ const authModal = document.getElementById('auth-modal');
 const authForm = document.getElementById('auth-form');
 const authEmailEl = document.getElementById('auth-email');
 const authPasswordEl = document.getElementById('auth-password');
+const authPasswordConfirmEl = document.getElementById('auth-password-confirm');
+const authPasswordConfirmField = document.getElementById('auth-password-confirm-field');
 const authErrorEl = document.getElementById('auth-error');
+const authCaptchaEl = document.getElementById('auth-captcha');
 const authSubmitBtn = document.getElementById('auth-submit');
 const authForgotBtn = document.getElementById('auth-forgot');
 const tabSignIn = document.getElementById('tab-signin');
 const tabSignUp = document.getElementById('tab-signup');
+const passwordToggleBtns = document.querySelectorAll('.password-toggle');
 
 const puzzlesModal = document.getElementById('puzzles-modal');
 const puzzlesListEl = document.getElementById('puzzles-list');
@@ -135,11 +139,11 @@ function showWarning(message) {
   warningEl.textContent = message;
 }
 
-function showToast(message) {
+function showToast(message, duration = 2500) {
   toastEl.textContent = message;
   toastEl.hidden = false;
   clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => { toastEl.hidden = true; }, 2500);
+  showToast._t = setTimeout(() => { toastEl.hidden = true; }, duration);
 }
 
 function runGenerate({ seed } = {}) {
@@ -221,17 +225,87 @@ window.addEventListener('afterprint', () => {
 
 // ---------- Auth ----------
 
+let turnstileWidgetId = null;
+
+function emailRedirectTo() {
+  return window.location.origin + window.location.pathname;
+}
+
+function ensureTurnstile() {
+  if (turnstileWidgetId !== null) return;
+  if (!window.turnstile || !window.TURNSTILE_SITE_KEY) return;
+  turnstileWidgetId = window.turnstile.render(authCaptchaEl, {
+    sitekey: window.TURNSTILE_SITE_KEY,
+    theme: 'light',
+  });
+}
+
+function resetTurnstile() {
+  if (turnstileWidgetId !== null && window.turnstile) {
+    window.turnstile.reset(turnstileWidgetId);
+  }
+}
+
+function getTurnstileToken() {
+  if (turnstileWidgetId === null || !window.turnstile) return undefined;
+  return window.turnstile.getResponse(turnstileWidgetId) || undefined;
+}
+
+function resetPasswordVisibility() {
+  authPasswordEl.type = 'password';
+  authPasswordConfirmEl.type = 'password';
+  for (const btn of passwordToggleBtns) {
+    btn.setAttribute('aria-pressed', 'false');
+    btn.setAttribute('aria-label', 'Show password');
+  }
+}
+
 function setAuthMode(mode) {
   authMode = mode;
   tabSignIn.classList.toggle('active', mode === 'signin');
   tabSignUp.classList.toggle('active', mode === 'signup');
   authSubmitBtn.textContent = mode === 'signin' ? 'Sign in' : 'Create account';
   authPasswordEl.autocomplete = mode === 'signin' ? 'current-password' : 'new-password';
+  authPasswordConfirmField.hidden = mode !== 'signup';
+  authPasswordConfirmEl.required = mode === 'signup';
+  authCaptchaEl.hidden = mode !== 'signup';
+  if (mode === 'signup') {
+    // Render lazily so the Turnstile script has time to load before first use.
+    if (window.turnstile) ensureTurnstile();
+    else window.turnstile?.ready?.(ensureTurnstile);
+  }
+  resetPasswordVisibility();
   authErrorEl.hidden = true;
+  authErrorEl.textContent = '';
 }
 
-function showAuthError(msg) {
-  authErrorEl.textContent = msg;
+function showAuthError(msg, { withResend = false, email = '' } = {}) {
+  authErrorEl.textContent = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  authErrorEl.appendChild(span);
+  if (withResend && email) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'linkish';
+    btn.style.marginLeft = '.5rem';
+    btn.textContent = 'Resend confirmation';
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        const { error } = await supabase.auth.resend({
+          type: 'signup',
+          email,
+          options: { emailRedirectTo: emailRedirectTo() },
+        });
+        if (error) throw error;
+        authErrorEl.textContent = `Confirmation email re-sent to ${email}. Check your inbox.`;
+      } catch (err) {
+        authErrorEl.textContent = err?.message ?? 'Could not resend confirmation email.';
+      }
+    });
+    authErrorEl.appendChild(btn);
+  }
   authErrorEl.hidden = false;
 }
 
@@ -240,12 +314,23 @@ tabSignUp.addEventListener('click', () => setAuthMode('signup'));
 
 signInBtn.addEventListener('click', () => {
   setAuthMode('signin');
-  authErrorEl.hidden = true;
   authModal.showModal();
 });
 
 document.querySelector('[data-close-auth]').addEventListener('click', () => authModal.close());
 document.querySelector('[data-close-puzzles]').addEventListener('click', () => puzzlesModal.close());
+
+for (const btn of passwordToggleBtns) {
+  btn.addEventListener('click', () => {
+    const targetId = btn.dataset.toggleTarget;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+    const revealing = input.type === 'password';
+    input.type = revealing ? 'text' : 'password';
+    btn.setAttribute('aria-pressed', revealing ? 'true' : 'false');
+    btn.setAttribute('aria-label', revealing ? 'Hide password' : 'Show password');
+  });
+}
 
 authForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -255,17 +340,48 @@ authForm.addEventListener('submit', async (e) => {
   try {
     if (authMode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        const msg = (error.message || '').toLowerCase();
+        const code = error.code || '';
+        if (msg.includes('not confirmed') || msg.includes('email not confirmed') || code === 'email_not_confirmed') {
+          showAuthError(
+            'Your email isn\'t confirmed yet. Check your inbox for the confirmation link, or resend it below.',
+            { withResend: true, email },
+          );
+          return;
+        }
+        throw error;
+      }
+      authModal.close();
+      authForm.reset();
+      resetPasswordVisibility();
     } else {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const confirmPassword = authPasswordConfirmEl.value;
+      if (password !== confirmPassword) {
+        showAuthError('Passwords do not match.');
+        return;
+      }
+      const captchaToken = getTurnstileToken();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: emailRedirectTo(), captchaToken },
+      });
       if (error) throw error;
+      authModal.close();
+      authForm.reset();
+      resetPasswordVisibility();
+      // Identity is present but no active session means email confirmation is required.
+      const needsConfirmation = !data?.session && !!data?.user;
+      if (needsConfirmation) {
+        showToast(`Check ${email} for a confirmation link to finish creating your account.`, 8000);
+      }
     }
-    authModal.close();
-    authForm.reset();
   } catch (err) {
     showAuthError(err?.message ?? 'Something went wrong. Try again.');
   } finally {
     authSubmitBtn.disabled = false;
+    if (authMode === 'signup') resetTurnstile();
   }
 });
 

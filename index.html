@@ -85,7 +85,7 @@
     <section id="output" class="output" aria-live="polite"></section>
   </main>
 
-  <footer class="screen-only app-version">v1.5.1</footer>
+  <footer class="screen-only app-version">v1.6.0</footer>
 
   <!-- Auth modal -->
   <dialog id="auth-modal" class="modal">
@@ -103,8 +103,23 @@
       </label>
       <label class="field">
         <span>Password</span>
-        <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required />
+        <div class="password-wrap">
+          <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required />
+          <button type="button" class="password-toggle" data-toggle-target="auth-password" aria-label="Show password" aria-pressed="false">
+            <span class="eye-icon" aria-hidden="true">👁</span>
+          </button>
+        </div>
       </label>
+      <label class="field" id="auth-password-confirm-field" hidden>
+        <span>Confirm password</span>
+        <div class="password-wrap">
+          <input id="auth-password-confirm" type="password" autocomplete="new-password" minlength="6" />
+          <button type="button" class="password-toggle" data-toggle-target="auth-password-confirm" aria-label="Show password" aria-pressed="false">
+            <span class="eye-icon" aria-hidden="true">👁</span>
+          </button>
+        </div>
+      </label>
+      <div id="auth-captcha" class="captcha" hidden></div>
       <div id="auth-error" class="warning" hidden></div>
       <div class="actions">
         <button id="auth-submit" type="submit" class="primary">Sign in</button>
@@ -132,7 +147,11 @@
   <script>
     window.SUPABASE_URL = 'https://odeupftrdoldzdomjoeu.supabase.co';
     window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_OT_vPShIzdKF_pjsPexglA_jcXP21Xa';
+    // Turnstile site key (public). Secret key lives in SETUP.local.md and is
+    // pasted into the Supabase CAPTCHA settings, not into the client.
+    window.TURNSTILE_SITE_KEY = '0x4AAAAAADRjaP1UGPjBYlMG';
   </script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
