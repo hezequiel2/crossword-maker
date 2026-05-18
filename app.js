@@ -32,12 +32,27 @@ const tabSignIn = document.getElementById('tab-signin');
 const tabSignUp = document.getElementById('tab-signup');
 const passwordToggleBtns = document.querySelectorAll('.password-toggle');
 
+const authCheckEmailPanel = document.getElementById('auth-check-email');
+const authCheckEmailAddress = document.getElementById('auth-check-email-address');
+const authCheckEmailStatus = document.getElementById('auth-check-email-status');
+const authResendBtn = document.getElementById('auth-resend');
+
 const puzzlesModal = document.getElementById('puzzles-modal');
 const puzzlesListEl = document.getElementById('puzzles-list');
 
 const editingPillEl = document.getElementById('editing-pill');
 const editingPillNameEl = editingPillEl.querySelector('.editing-pill__name');
 const editingPillClearBtn = editingPillEl.querySelector('.editing-pill__clear');
+
+// Snapshot the URL hash before Supabase consumes it, so we can tell whether
+// the user just arrived from an email-confirmation / recovery / magic link.
+let verificationHint = (() => {
+  const h = window.location.hash || '';
+  if (h.includes('type=signup')) return 'signup';
+  if (h.includes('type=recovery')) return 'recovery';
+  if (h.includes('type=magiclink')) return 'magiclink';
+  return null;
+})();
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY);
 
@@ -315,12 +330,59 @@ function showAuthError(msg, { withResend = false, email = '' } = {}) {
 tabSignIn.addEventListener('click', () => setAuthMode('signin'));
 tabSignUp.addEventListener('click', () => setAuthMode('signup'));
 
-signInBtn.addEventListener('click', () => {
+function showCheckEmailPanel(email) {
+  authCheckEmailAddress.textContent = email;
+  authCheckEmailPanel.dataset.email = email;
+  authCheckEmailStatus.hidden = true;
+  authCheckEmailStatus.textContent = '';
+  authCheckEmailStatus.classList.remove('is-error');
+  authResendBtn.disabled = false;
+  authForm.hidden = true;
+  authCheckEmailPanel.hidden = false;
+}
+
+function resetAuthModalToForm() {
+  authCheckEmailPanel.hidden = true;
+  authForm.hidden = false;
+  authForm.reset();
+  resetPasswordVisibility();
   setAuthMode('signin');
+}
+
+signInBtn.addEventListener('click', () => {
+  resetAuthModalToForm();
   authModal.showModal();
 });
 
-document.querySelector('[data-close-auth]').addEventListener('click', () => authModal.close());
+for (const btn of document.querySelectorAll('[data-close-auth]')) {
+  btn.addEventListener('click', () => authModal.close());
+}
+authModal.addEventListener('close', () => resetAuthModalToForm());
+
+authResendBtn.addEventListener('click', async () => {
+  const email = authCheckEmailPanel.dataset.email || '';
+  if (!email) return;
+  authResendBtn.disabled = true;
+  authCheckEmailStatus.hidden = true;
+  authCheckEmailStatus.classList.remove('is-error');
+  try {
+    const captchaToken = getTurnstileToken();
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: emailRedirectTo(), captchaToken },
+    });
+    if (error) throw error;
+    authCheckEmailStatus.textContent = `Confirmation email re-sent to ${email}.`;
+  } catch (err) {
+    authCheckEmailStatus.textContent = err?.message ?? 'Could not resend confirmation email.';
+    authCheckEmailStatus.classList.add('is-error');
+  } finally {
+    authCheckEmailStatus.hidden = false;
+    authResendBtn.disabled = false;
+    resetTurnstile();
+  }
+});
 document.querySelector('[data-close-puzzles]').addEventListener('click', () => puzzlesModal.close());
 
 for (const btn of passwordToggleBtns) {
@@ -375,13 +437,14 @@ authForm.addEventListener('submit', async (e) => {
         options: { emailRedirectTo: emailRedirectTo(), captchaToken },
       });
       if (error) throw error;
-      authModal.close();
-      authForm.reset();
-      resetPasswordVisibility();
       // Identity is present but no active session means email confirmation is required.
       const needsConfirmation = !data?.session && !!data?.user;
       if (needsConfirmation) {
-        showToast(`Check ${email} for a confirmation link to finish creating your account.`, 8000);
+        showCheckEmailPanel(email);
+      } else {
+        authModal.close();
+        authForm.reset();
+        resetPasswordVisibility();
       }
     }
   } catch (err) {
@@ -449,6 +512,10 @@ function updateSaveButton() {
 supabase.auth.onAuthStateChange((_event, session) => {
   currentUser = session?.user ?? null;
   updateAuthUI();
+  if (currentUser && verificationHint === 'signup') {
+    showToast('Email verified — you’re signed in.', 5000);
+    verificationHint = null;
+  }
 });
 
 // Initial session check (in case user is already signed in from previous visit).

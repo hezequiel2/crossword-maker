@@ -85,7 +85,7 @@
     <section id="output" class="output" aria-live="polite"></section>
   </main>
 
-  <footer class="screen-only app-version">v1.6.1</footer>
+  <footer class="screen-only app-version">v1.7.0</footer>
 
   <!-- Auth modal -->
   <dialog id="auth-modal" class="modal">
@@ -126,6 +126,19 @@
         <button type="button" id="auth-forgot" class="linkish">Forgot password?</button>
       </div>
     </form>
+    <div class="modal-body auth-check-email" id="auth-check-email" hidden>
+      <div class="modal-header">
+        <h2 class="modal-title">Check your email</h2>
+        <button type="button" class="modal-close" data-close-auth aria-label="Close">×</button>
+      </div>
+      <p>We sent a confirmation link to <strong id="auth-check-email-address"></strong>. Click it to finish creating your account. The link expires in 24 hours.</p>
+      <p class="muted">Didn't get it? Check spam, or resend below.</p>
+      <div id="auth-check-email-status" class="auth-check-status" hidden></div>
+      <div class="actions">
+        <button type="button" id="auth-resend" class="primary">Resend email</button>
+        <button type="button" class="linkish" data-close-auth>Close</button>
+      </div>
+    </div>
   </dialog>
 
   <!-- My Puzzles modal -->
