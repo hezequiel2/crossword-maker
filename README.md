@@ -57,6 +57,16 @@ git push
 ```
 GitHub Pages rebuilds automatically within about a minute.
 
+## Keeping the cloud database awake
+
+Cloud save runs on a Supabase **free-plan** project, and free projects are **paused after 7 days with no database activity** — and the timer counts real database queries, not page visits or dashboard logins. A low-traffic classroom tool can easily go a week without anyone saving a puzzle, so without intervention the backend pauses and cloud save stops working until someone manually restores it.
+
+To prevent this, a **keep-alive** runs on [cron-job.org](https://cron-job.org): once a day it sends a tiny read request to a dedicated `keepalive` table, which resets the 7-day timer. It uses the public publishable key (the same one the browser app already uses) and reads a table that holds nothing sensitive, so it exposes nothing new.
+
+If cloud save ever shows a "project paused" error: restore it from the Supabase dashboard (one click — paused free projects stay restorable, with no data loss, for 90 days), then check that the cron-job.org keep-alive is still enabled.
+
+The keep-alive account, the exact ping URL/header, and the `keepalive` table's SQL are documented in `SETUP.local.md`.
+
 ## Files
 
 - `index.html` — page structure and form
